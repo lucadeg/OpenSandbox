@@ -17,9 +17,11 @@
 package runtime
 
 import (
+	"context"
 	"errors"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"syscall"
@@ -174,6 +176,48 @@ func TestReaperReapsOrphan(t *testing.T) {
 	t.Fatalf("orphan pid %d was not reaped by the reaper", pid)
 }
 
+// TestReaperSweepBackstop verifies the sweep ticker drains children even when
+// no SIGCHLD can reach the run loop (lost/coalesced signals, OSEP-0018 R-t).
+// The Notify subscription stays registered (blocking the Go runtime's
+// auto-reap), but the run loop is severed from the subscribed channel, so
+// only the ticker can reap the exiting child.
+func TestReaperSweepBackstop(t *testing.T) {
+	oldInterval := reaperSweepInterval
+	reaperSweepInterval = 50 * time.Millisecond
+
+	r := newReaper()
+	r.start()
+	// Sever the run loop from the subscribed channel: the kernel keeps
+	// signalling the (unread) original, so only the sweep ticker can drain.
+	// signal.Stop must still target the original channel.
+	subscribed := r.sigchld
+	r.sigchld = make(chan os.Signal, 1)
+	initReaper = r
+	t.Cleanup(func() {
+		initReaper.stop()
+		signal.Stop(subscribed)
+		initReaper = nil
+		reaperSweepInterval = oldInterval
+	})
+	go r.run()
+
+	cmd := exec.Command("sh", "-c", "exit 0")
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	pid := cmd.Process.Pid
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, ok := exitStatusByPid(t, pid); !ok {
+			return // reaped by the sweep ticker
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("child pid %d was not reaped by the sweep backstop", pid)
+}
+
 func TestPreReapBarrierRunsBeforeWaitReturns(t *testing.T) {
 	startReaperForTest(t)
 
@@ -318,5 +362,21 @@ func TestManagedProcessWithoutReaperUsesCmdWait(t *testing.T) {
 	}
 	if mp.ExitCode() != 4 {
 		t.Fatalf("ExitCode = %d, want 4", mp.ExitCode())
+	}
+}
+
+func TestRunManagedCommandWithReaper(t *testing.T) {
+	startReaperForTest(t)
+	cmd := exec.Command("sh", "-c", "exit 17")
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	exitCode, err := RunManagedCommand(context.Background(), cmd, func() {
+		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+	})
+	if err == nil {
+		t.Fatal("RunManagedCommand error = nil, want exit status 17")
+	}
+	if exitCode != 17 {
+		t.Fatalf("RunManagedCommand exit code = %d, want 17", exitCode)
 	}
 }

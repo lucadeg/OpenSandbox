@@ -220,6 +220,9 @@ osb file replace <sandbox-id> /workspace/app.py --old old --new new -o json
 osb file chmod <sandbox-id> /workspace/script.sh --mode 755 -o json
 ```
 
+Downloads replace the local file only on success; a failed or interrupted
+download preserves any existing file. See the [CLI guide](../docs/cli/index.md#work-with-files).
+
 ### Manage runtime egress policy
 
 Inspect current policy:
@@ -263,21 +266,23 @@ credential values as command-line flags; keep them in the payload stream or file
 Use the stable diagnostics commands for API-backed log and event descriptors.
 
 ```bash
-osb diagnostics events <sandbox-id> --scope lifecycle -o raw
 osb diagnostics events <sandbox-id> --scope runtime -o raw
+osb diagnostics events <sandbox-id> --scope all -o raw
 osb diagnostics logs <sandbox-id> --scope container -o raw
-osb diagnostics logs <sandbox-id> --scope lifecycle -o json
+osb diagnostics logs <sandbox-id> --scope all -o json
 osb diagnostics events <sandbox-id> --scope runtime -o json
 osb diagnostics logs <sandbox-id> --scope container -o yaml
 ```
 
-`--scope` is required for stable diagnostics. Common scopes are `lifecycle` and
-`container` for logs, and `lifecycle` and `runtime` for events. Raw output
-prints inline diagnostic text, or the content URL when diagnostics are
-delivered as a temporary URL. Structured CLI output follows the SDK/Python field
-style, for example `content_url`, `content_length`, and `expires_at`.
-Some server builds may return `DIAGNOSTICS_NOT_IMPLEMENTED` for scoped
-diagnostics until the stable backend implementation is enabled.
+`--scope` is required for stable diagnostics. The built-in server supports
+`container` and `all` for logs, and `runtime` and `all` for events. It returns
+`DIAGNOSTICS_SCOPE_UNSUPPORTED` for unavailable scopes, including lifecycle events.
+Best-effort scopes may include a `warnings` field when the backend can only
+provide a subset. Raw output prints inline
+diagnostic text, or the content URL when diagnostics are delivered as a
+temporary URL. Structured CLI output follows the SDK/Python field style, for
+example `content_url`, `content_length`, and `expires_at`. Older server builds
+may still return `DIAGNOSTICS_NOT_IMPLEMENTED` for scoped diagnostics.
 
 Legacy DevOps diagnostics remain experimental. Prefer `osb diagnostics logs/events`
 for stable API-backed log and event collection.

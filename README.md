@@ -238,7 +238,7 @@ OpenSandbox provides examples covering SDK usage, agent integrations, browser au
 
 #### 🤖 Coding Agent Integrations
 
-- **Coding CLIs** — [Claude Code](docs/examples/claude-code.md), [Gemini CLI](docs/examples/gemini-cli.md), [OpenAI Codex CLI](docs/examples/codex-cli.md), [Qwen Code](docs/examples/qwen-code.md), [Kimi CLI](docs/examples/kimi-cli.md): run each vendor CLI inside OpenSandbox.
+- **Coding CLIs** — [Claude Code](docs/examples/claude-code.md), [Gemini CLI](docs/examples/gemini-cli.md), [OpenAI Codex CLI](docs/examples/codex-cli.md), [OpenCode](docs/examples/opencode.md), [Qwen Code](docs/examples/qwen-code.md), [Kimi CLI](docs/examples/kimi-cli.md): run each CLI inside OpenSandbox.
 - **[langgraph](docs/examples/langgraph.md)** - LangGraph state-machine workflow that creates/runs a sandbox job with fallback retry.
 - **[google-adk](docs/examples/google-adk.md)** - Google ADK agent using OpenSandbox tools to write/read files and run commands.
 - **[openclaw](docs/examples/openclaw.md)** - Launch an OpenClaw Gateway inside a sandbox.
@@ -268,7 +268,6 @@ For more details, please refer to the [examples documentation](docs/examples/ind
 | [`components/execd/`](components/execd/README.md) | Sandbox execution daemon (commands and file operations)          |
 | [`components/ingress/`](components/ingress/README.md) | Sandbox traffic ingress proxy                                    |
 | [`components/egress/`](components/egress/README.md) | Sandbox network egress control                                   |
-| [`sandboxes/`](sandboxes/) | Runtime sandbox implementations                                   |
 | [`examples/`](examples/) | Runnable example code                                            |
 | [`docs/examples/`](docs/examples/index.md) | Example documentation and use cases                              |
 | [`oseps/`](oseps/README.md) | OpenSandbox Enhancement Proposals                                |

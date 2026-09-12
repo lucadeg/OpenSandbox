@@ -24,6 +24,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/alibaba/opensandbox/execd/pkg/isolation"
 )
@@ -275,9 +276,8 @@ func TestHardeningReportDegradesWithoutInitMode(t *testing.T) {
 	launcherSearchPaths = append(launcherSearchPaths, launcherBuilt)
 
 	// Without init topology the entrypoint and /code kernels never pass
-	// through the launcher; every enabled layer must report degraded, and a
-	// layer that is not configured must stay disabled rather than being
-	// dragged into the degradation.
+	// through the launcher: enabled layers must report degraded, unconfigured
+	// ones stay disabled.
 	initHardeningForTest(t, hardenedCfg())
 	report := ReportHardening()
 	if report.InitMode != "none" {
@@ -346,7 +346,10 @@ func TestLandlockActiveOrUnsupported(t *testing.T) {
 		assertLandlockRule(t, rules, "/usr", llReadFile|llReadDir|llExecute)
 		assertLandlockRule(t, rules, "/proc/self", llReadFile|llReadDir|llExecute)
 		assertLandlockRule(t, rules, "/tmp", llRwAccess)
-		assertLandlockRule(t, rules, "/workspace", llRwAccess)
+		// allowed_writable paths carry execute on the default rule: the
+		// mount-expansion rule is the backup, not the only source of the
+		// workspace exec grant.
+		assertLandlockRule(t, rules, "/workspace", llRwAccess|llExecute)
 		assertLandlockRule(t, rules, "/cache", llRwAccess)
 		assertLandlockRule(t, rules, "/opt/data", llReadFile|llReadDir|llExecute)
 		for _, rule := range rules {
@@ -429,4 +432,70 @@ func assertLandlockRule(t *testing.T, rules []landlockRule, path string, access 
 		}
 	}
 	t.Fatalf("landlock rule for %s missing", path)
+}
+
+// TestHardeningPTYSessions verifies StartPTY/StartPipe route through the
+// launcher (OSEP-0018 R-n): the argv[0]-replacement execve must preserve the
+// pty/session semantics (setsid/Setctty, pty fds) while the floor applies,
+// with the reaper dispatching launcher-exec'd children.
+func TestHardeningPTYSessions(t *testing.T) {
+	buildLauncher(t)
+	launcherSearchPaths = append(launcherSearchPaths, launcherBuilt)
+	startReaperForTest(t)
+	initHardeningForTest(t, hardenedCfg())
+	requireBash(t)
+
+	// Seed the credential env so the session would leak it without the strip.
+	t.Setenv("EXECD_ACCESS_TOKEN", "pty-session-secret")
+
+	// The session shell is the launcher-exec'd workload: read the floor from
+	// its own /proc/self/status and verify the credential env was stripped.
+	probe := "grep -E '^CapEff:|^Seccomp:|^NoNewPrivs:' /proc/self/status; " +
+		"if env | grep -q '^EXECD_ACCESS_TOKEN='; then echo token_leaked; else echo token_stripped; fi"
+
+	assertFloor := func(mode string, data string) {
+		t.Helper()
+		for _, want := range []string{
+			"Seccomp:\t2",
+			"NoNewPrivs:\t1",
+			"token_stripped",
+		} {
+			if !strings.Contains(data, want) {
+				t.Fatalf("%s session output missing %q:\n%s", mode, want, data)
+			}
+		}
+		// CapEff is only meaningful to assert when execd runs as root (the
+		// launcher drops caps it holds; a non-root test process has none).
+		if os.Geteuid() == 0 && !strings.Contains(data, "CapEff:\t0000000000000000") {
+			t.Fatalf("%s session CapEff not dropped:\n%s", mode, data)
+		}
+	}
+
+	t.Run("pipe", func(t *testing.T) {
+		s := newPTYSession(uuidString(), "", probe)
+		if err := s.StartPipe(); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { s.close() })
+
+		if !replayContains(t, s, "token_stripped", 10*time.Second) {
+			t.Fatal("pipe session did not produce the floor probe output")
+		}
+		data, _ := s.replay.ReadFrom(0)
+		assertFloor("pipe", string(data))
+	})
+
+	t.Run("pty", func(t *testing.T) {
+		s := newPTYSession(uuidString(), "", probe)
+		if err := s.StartPTY(); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { s.close() })
+
+		if !replayContains(t, s, "token_stripped", 10*time.Second) {
+			t.Fatal("pty session did not produce the floor probe output")
+		}
+		data, _ := s.replay.ReadFrom(0)
+		assertFloor("pty", string(data))
+	})
 }

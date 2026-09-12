@@ -13,18 +13,22 @@ test: vet ## Run tests
 
 ##@ Linter
 
+# Go installs tools in GOBIN, or in the first GOPATH entry's bin directory.
+GO_BIN = $(or $(shell go env GOBIN),$(shell go env GOPATH | cut -d: -f1)/bin)
+GOLANGCI_LINT ?= $(or $(shell command -v golangci-lint 2>/dev/null),$(GO_BIN)/golangci-lint)
+
 .PHONY: install-golint
 install-golint:
-	@if ! command -v golangci-lint &> /dev/null; then \
-  		echo "installing golangci-lint..."; \
-  		go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
-  	else \
-  	    echo "golangci-lint already installed"; \
+	@if ! command -v "$(GOLANGCI_LINT)" >/dev/null 2>&1; then \
+		echo "installing golangci-lint..."; \
+		go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
+	else \
+		echo "golangci-lint already installed"; \
 	fi
 
 .PHONY: golint
 golint: fmt install-golint
-	"$$(go env GOPATH)/bin/golangci-lint" run -v ./...
+	"$(GOLANGCI_LINT)" run -v ./...
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || echo "dev")
 GIT_COMMIT ?= $(shell git rev-parse HEAD 2>/dev/null || echo "unknown")
@@ -155,8 +159,34 @@ build-ebpf: ## Build the execd-ebpf observation variant (CGO + cilium/ebpf).
 		exit 1; \
 	fi
 	@mkdir -p bin
+	$(MAKE) generate-ebpf ARCH=$(shell go env GOARCH)
 	CGO_ENABLED=1 go build -tags ebpf $(GO_BUILD_FLAGS) -ldflags "$(GO_LDFLAGS)" -o bin/execd-ebpf main.go
 	@echo "built bin/execd-ebpf"
+
+# Regenerate the CO-RE audit bytecode for one architecture from
+# prog/audit.bpf.c + prog/audit_types.h. The types header declares only the
+# kernel members the programs touch (resolved by name against the target
+# kernel BTF at load time), so no vmlinux.h is needed and the bytecode is
+# hermetic across architectures (issue #1563).
+#
+#   make generate-ebpf ARCH=amd64   # or arm64; defaults to GOARCH
+#
+# Requires clang with the bpf target. bpf2go writes audit_bpf_<target>.{go,o};
+# the Go build picks the right one via build tags.
+.PHONY: generate-ebpf
+ARCH ?= $(shell go env GOARCH)
+generate-ebpf:
+	@case "$(ARCH)" in \
+		amd64|arm64) ;; \
+		*) echo "generate-ebpf: unsupported ARCH=$(ARCH) (amd64|arm64)" >&2; exit 1 ;; \
+	esac
+	go run github.com/cilium/ebpf/cmd/bpf2go@v0.16.0 \
+		-cc clang -no-strip \
+		-cflags "-Ipkg/ebpf/prog" \
+		-target $(ARCH) \
+		-go-package ebpf -output-dir pkg/ebpf \
+		audit pkg/ebpf/prog/audit.bpf.c
+	@echo "regenerated pkg/ebpf/audit_bpf_$(ARCH).{go,o}"
 
 .PHONY: test-integration
 test-integration: ## Run integration tests (Linux + bwrap required).
