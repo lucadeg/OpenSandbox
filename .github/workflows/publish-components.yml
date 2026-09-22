@@ -1,3 +1,4 @@
+
 name: Publish Components Image
 
 permissions:
@@ -29,16 +30,7 @@ on:
         description: 'Docker image tag'
         required: true
         default: 'latest'
-  push:
-    tags:
-      - 'docker/execd/**'
-      - 'docker/ingress/**'
-      - 'docker/egress/**'
-      - 'k8s/controller/**'
-      - 'k8s/task-executor/**'
-      - 'k8s/image-committer/**'
-      - 'docker/nodeagent/**'
-
+  # Automatic triggers removed; invoke through FounderOS/Admin Gate.
 jobs:
   release-preflight:
     uses: ./.github/workflows/release-preflight.yml

@@ -1,3 +1,4 @@
+
 name: Publish Python SDKs
 
 permissions:
@@ -7,12 +8,8 @@ permissions:
   artifact-metadata: write
 
 on:
-  push:
-    tags:
-      - "python/sandbox/v*"
-      - "python/code-interpreter/v*"
-      - "python/mcp/sandbox/v*"
-
+  workflow_dispatch:
+  # Automatic triggers removed; invoke through FounderOS/Admin Gate.
 jobs:
   release-preflight:
     uses: ./.github/workflows/release-preflight.yml

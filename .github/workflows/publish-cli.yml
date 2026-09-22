@@ -1,10 +1,9 @@
+
 name: Publish CLI
 
 on:
-  push:
-    tags:
-      - 'cli/v*'
-
+  workflow_dispatch:
+  # Automatic triggers removed; invoke through FounderOS/Admin Gate.
 permissions:
   contents: read
   id-token: write

@@ -1,3 +1,4 @@
+
 # Copyright 2025 Alibaba Group Holding Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,15 +16,8 @@
 name: SDK Tests
 
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
-    paths:
-      - "cli/**"
-      - "sdks/**"
-      - "specs/**"
-
+  workflow_dispatch:
+  # Automatic triggers removed; invoke through FounderOS/Admin Gate.
 permissions:
   contents: read
   pull-requests: read

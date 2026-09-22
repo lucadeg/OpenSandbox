@@ -1,10 +1,9 @@
+
 name: Publish Kotlin/JVM SDKs
 
 on:
-  push:
-    tags:
-      - "java/sandbox/v*"
-
+  workflow_dispatch:
+  # Automatic triggers removed; invoke through FounderOS/Admin Gate.
 permissions:
   contents: read
 

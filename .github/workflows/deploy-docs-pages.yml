@@ -1,11 +1,10 @@
+
 name: Deploy Docs Pages
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
+  # Automatic triggers removed; invoke through FounderOS/Admin Gate.
 permissions:
   contents: read
   pages: write

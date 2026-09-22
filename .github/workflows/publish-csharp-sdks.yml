@@ -1,11 +1,9 @@
+
 name: Publish C# SDKs
 
 on:
-  push:
-    tags:
-      - "csharp/sandbox/v*"
-      - "csharp/code-interpreter/v*"
-
+  workflow_dispatch:
+  # Automatic triggers removed; invoke through FounderOS/Admin Gate.
 permissions:
   contents: read
   id-token: write

@@ -1,13 +1,9 @@
+
 name: Helm Docs Check
 
 on:
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'kubernetes/charts/**'
-      - 'kubernetes/Makefile'
-      - '.github/workflows/helm-docs.yml'
-
+  workflow_dispatch:
+  # Automatic triggers removed; invoke through FounderOS/Admin Gate.
 permissions:
   contents: read
   pull-requests: read

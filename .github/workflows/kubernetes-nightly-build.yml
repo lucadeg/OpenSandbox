@@ -1,3 +1,4 @@
+
 name: Kubernetes nightly build (Monorepo)
 
 permissions:
@@ -7,11 +8,7 @@ permissions:
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 20 * * *"
-  pull_request:
-    branches: [ main ]
-
+  # Automatic triggers removed; invoke through FounderOS/Admin Gate.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

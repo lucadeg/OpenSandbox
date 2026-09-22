@@ -1,18 +1,10 @@
+
 name: Helm Release Smoke
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/workflows/helm-release-test.yml'
-      - '.github/workflows/publish-helm-chart.yml'
-      - 'kubernetes/charts/**'
-      - 'scripts/release/*helm*.sh'
-      - 'sdks/code-interpreter/python/**'
-      - 'sdks/sandbox/python/**'
-      - 'tests/python/**'
   workflow_dispatch:
 
+  # Automatic triggers removed; invoke through FounderOS/Admin Gate.
 permissions:
   contents: read
 

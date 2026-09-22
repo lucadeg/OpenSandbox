@@ -1,17 +1,10 @@
+
 name: Dependency Lock Stability
 
 on:
-  pull_request:
-    branches: [ main ]
-    paths:
-      - "**/go.mod"
-      - "**/go.sum"
-      - "**/uv.lock"
-      - "**/pyproject.toml"
-      - "**/package.json"
-      - "**/pnpm-lock.yaml"
   workflow_dispatch:
 
+  # Automatic triggers removed; invoke through FounderOS/Admin Gate.
 permissions:
   contents: read
 

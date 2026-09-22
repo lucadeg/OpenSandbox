@@ -1,11 +1,9 @@
+
 name: Publish JavaScript SDKs
 
 on:
-  push:
-    tags:
-      - "js/sandbox/v*"
-      - "js/code-interpreter/v*"
-
+  workflow_dispatch:
+  # Automatic triggers removed; invoke through FounderOS/Admin Gate.
 permissions:
   contents: read
   id-token: write

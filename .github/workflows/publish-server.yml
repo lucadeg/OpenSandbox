@@ -1,10 +1,9 @@
+
 name: Publish Server
 
 on:
-  push:
-    tags:
-      - 'server/v*'
-
+  workflow_dispatch:
+  # Automatic triggers removed; invoke through FounderOS/Admin Gate.
 permissions:
   contents: read
   id-token: write
